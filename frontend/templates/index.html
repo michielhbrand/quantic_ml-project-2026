@@ -268,7 +268,7 @@
         <!-- Section 2: Batch Prediction -->
         <div class="section">
             <h2>2. Batch Prediction</h2>
-            <p class="section-note">Upload a CSV file with multiple instances for batch prediction.</p>
+            <p class="section-note">Upload a CSV file to get predictions for each instance. If the file includes a <code>Label</code> column, evaluation metrics (AUC, accuracy, confusion matrix) are also displayed. The 20% hold-out test set can be used to demo model performance.</p>
 
             <div class="form-group">
                 <label>CSV File</label>
@@ -281,54 +281,9 @@
 
             <div id="batchResult" class="result"></div>
         </div>
-
-        <!-- Section 3: Model Evaluation -->
-        <div class="section">
-            <h2>3. Model Evaluation</h2>
-            <p class="section-note">Upload a CSV file containing a "Label" column to evaluate model performance.</p>
-
-            <div class="form-group">
-                <label>Test Set CSV</label>
-                <input type="file" id="evalFile" accept=".csv">
-            </div>
-
-            <div class="button-row">
-                <button class="primary" onclick="evaluateModel()">Upload and Evaluate</button>
-            </div>
-
-            <div id="evalResult" class="result"></div>
-        </div>
     </div>
 
     <script>
-        function loadDemoData() {
-            const demoData = {
-                "BaseOfCode": 4096,
-                "BaseOfData": 40960,
-                "Characteristics": 783,
-                "DllCharacteristics": 0,
-                "Entropy": 5.98,
-                "FileAlignment": 512,
-                "ImageBase": 4194304,
-                "Machine": 332,
-                "Magic": 267,
-                "NumberOfRvaAndSizes": 16,
-                "NumberOfSections": 5,
-                "NumberOfSymbols": 0,
-                "PE_TYPE": 267,
-                "PointerToSymbolTable": 0,
-                "Size": 178688,
-                "SizeOfCode": 33792,
-                "SizeOfHeaders": 1024,
-                "SizeOfImage": 33759232,
-                "SizeOfInitializedData": 177664,
-                "SizeOfOptionalHeader": 224,
-                "SizeOfUninitializedData": 33557504,
-                "TimeDateStamp": 0
-            };
-            document.getElementById('singleFeatures').value = JSON.stringify(demoData, null, 2);
-        }
-
         function loadGoodwareDemo() {
             // Verified: XGBoost model predicts 0 (goodware) for this real dataset row
             const demoData = {
@@ -498,76 +453,6 @@
             }
         }
 
-        async function evaluateModel() {
-            const resultDiv = document.getElementById('evalResult');
-            const fileInput = document.getElementById('evalFile');
-
-            if (!fileInput.files.length) {
-                resultDiv.className = 'result error';
-                resultDiv.innerHTML = '<strong>Error:</strong> Please select a file.';
-                resultDiv.style.display = 'block';
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-
-            try {
-                const response = await fetch('/predict_batch', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    let html = `<strong>Model evaluation complete</strong><br>`;
-                    html += `<div class="metric-item">Total instances: ${data.num_instances}</div>`;
-
-                    if (data.evaluation) {
-                        html += `<div class="metrics">
-                            <strong>Performance metrics:</strong>
-                            <div class="metric-item">Accuracy: <strong>${data.evaluation.accuracy}</strong></div>
-                            <div class="metric-item">AUC: <strong>${data.evaluation.auc}</strong></div>
-                            <div class="confusion-matrix">
-                                <strong>Confusion matrix:</strong>
-                                <table>
-                                    <tr>
-                                        <th></th>
-                                        <th>Predicted Goodware</th>
-                                        <th>Predicted Malware</th>
-                                    </tr>
-                                    <tr>
-                                        <th>Actual Goodware</th>
-                                        <td>${data.evaluation.confusion_matrix[0][0]}</td>
-                                        <td>${data.evaluation.confusion_matrix[0][1]}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Actual Malware</th>
-                                        <td>${data.evaluation.confusion_matrix[1][0]}</td>
-                                        <td>${data.evaluation.confusion_matrix[1][1]}</td>
-                                    </tr>
-                                </table>
-                            </div>
-                        </div>`;
-                    } else {
-                        html += `<div style="color:#7a1f1f; margin-top:8px;">No "Label" column found in the uploaded file. Cannot evaluate.</div>`;
-                    }
-
-                    resultDiv.className = 'result info';
-                    resultDiv.innerHTML = html;
-                } else {
-                    resultDiv.className = 'result error';
-                    resultDiv.innerHTML = `<strong>Error:</strong> ${data.error}`;
-                }
-
-                resultDiv.style.display = 'block';
-            } catch (error) {
-                resultDiv.className = 'result error';
-                resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
-                resultDiv.style.display = 'block';
-            }
-        }
     </script>
 </body>
 </html>
