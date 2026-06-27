@@ -11,9 +11,14 @@ __pycache__/
 # CatBoost
 catboost_info/
 
-# Model artifacts
-*.pkl
-*.pth
+# Model artifacts — keep only best model (xgboost.pkl) and scaler (scaler.pkl)
+# All other pkl/pth files remain excluded
+logistic_regression.pkl
+decision_tree.pkl
+random_forest.pkl
+lightgbm.pkl
+catboost.pkl
+pytorch_mlp.pth
 
 # Environment variables
 .env
