@@ -299,8 +299,12 @@ def model_info():
             'error': 'Model results not found'
         }), 404
 
+# Load models at module level so gunicorn workers initialise them on import
+print("Loading models...")
+load_models()
+
 if __name__ == '__main__':
-    print("Loading models...")
-    load_models()
+    import os
+    port = int(os.environ.get('PORT', 5000))
     print("Starting Flask server...")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=port)
