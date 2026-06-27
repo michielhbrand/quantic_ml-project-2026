@@ -83,6 +83,10 @@ class MalwareDataset:
             X, y, test_size=test_size, random_state=RANDOM_STATE, stratify=y
         )
         
+        # Keep unscaled test set (with column names) for saving to CSV
+        self.X_test_raw = X_test
+        self.y_test_raw = y_test
+        
         # Fit scaler on training data only
         X_train_scaled = self.scaler.fit_transform(X_train)
         X_test_scaled = self.scaler.transform(X_test)
@@ -495,9 +499,10 @@ def main():
         pickle.dump(dataset.scaler, f)
     print("Scaler saved to models/scaler.pkl")
     
-    # Save test set for evaluation
-    test_df = pd.DataFrame(X_test)
-    test_df['Label'] = y_test
+    # Save test set for evaluation (unscaled, with original feature names)
+    # The Flask app applies scaling via the saved scaler at inference time
+    test_df = dataset.X_test_raw.copy()
+    test_df['Label'] = dataset.y_test_raw.values
     test_df.to_csv('models/test_set.csv', index=False)
     print(f"Test set saved to models/test_set.csv ({len(test_df)} samples)")
     
