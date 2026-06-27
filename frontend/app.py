@@ -97,7 +97,17 @@ def preprocess_features(features_dict):
     for col in df.columns:
         df[col] = pd.to_numeric(df[col], errors='coerce')
     
-    # Fill any NaN values with 0
+    # Align columns to the scaler's expected feature names.
+    # Any features not supplied by the caller are filled with 0.
+    if scaler is not None and hasattr(scaler, 'feature_names_in_'):
+        expected_cols = list(scaler.feature_names_in_)
+        # Add missing columns as 0, drop unexpected columns
+        for col in expected_cols:
+            if col not in df.columns:
+                df[col] = 0.0
+        df = df[expected_cols]
+    
+    # Fill any remaining NaN values with 0
     df = df.fillna(0)
     
     # Scale features if scaler is available
