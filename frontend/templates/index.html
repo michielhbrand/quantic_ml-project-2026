@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Malware Detection System</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .section h2 {
+            color: #444;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .result.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .result.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .result.info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .prediction-result {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .malware {
+            color: #dc3545;
+        }
+        
+        .goodware {
+            color: #28a745;
+        }
+        
+        .metrics {
+            margin-top: 15px;
+        }
+        
+        .metric-item {
+            margin: 8px 0;
+            font-size: 1.1em;
+        }
+        
+        .confusion-matrix {
+            margin-top: 15px;
+        }
+        
+        .confusion-matrix table {
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .confusion-matrix th,
+        .confusion-matrix td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .confusion-matrix th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .demo-note {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            color: #856404;
+        }
+        
+        .predictions-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .prediction-item {
+            padding: 5px;
+            margin: 3px 0;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Malware Detection System</h1>
+        <p class="subtitle">Machine Learning-based Static Malware Detection</p>
+        
+        <!-- Section 1: Single Instance Prediction -->
+        <div class="section">
+            <h2>1. Single Instance Prediction</h2>
+            <div class="demo-note">
+                💡 <strong>Demo Mode:</strong> Enter feature values or use pre-filled demo data
+            </div>
+            
+            <div class="form-group">
+                <label>Feature Values (JSON format):</label>
+                <textarea id="singleFeatures" rows="6" placeholder='{"BaseOfCode": 4096, "Entropy": 7.5, "Size": 100000, ...}'></textarea>
+            </div>
+            
+            <button onclick="loadDemoData()">Load Demo Data</button>
+            <button onclick="predictSingle()">Predict</button>
+            
+            <div id="singleResult" class="result"></div>
+        </div>
+        
+        <!-- Section 2: Batch Prediction -->
+        <div class="section">
+            <h2>2. Batch Prediction (File Upload)</h2>
+            <div class="demo-note">
+                📁 Upload a CSV file with multiple instances for batch prediction
+            </div>
+            
+            <div class="form-group">
+                <label>Upload CSV File:</label>
+                <input type="file" id="batchFile" accept=".csv">
+            </div>
+            
+            <button onclick="predictBatch()">Upload & Predict</button>
+            
+            <div id="batchResult" class="result"></div>
+        </div>
+        
+        <!-- Section 3: Model Evaluation -->
+        <div class="section">
+            <h2>3. Model Evaluation (File with Labels)</h2>
+            <div class="demo-note">
+                📊 Upload a CSV file with a "Label" column to evaluate model performance
+            </div>
+            
+            <div class="form-group">
+                <label>Upload Test Set CSV:</label>
+                <input type="file" id="evalFile" accept=".csv">
+            </div>
+            
+            <button onclick="evaluateModel()">Upload & Evaluate</button>
+            
+            <div id="evalResult" class="result"></div>
+        </div>
+    </div>
+    
+    <script>
+        function loadDemoData() {
+            const demoData = {
+                "BaseOfCode": 4096,
+                "BaseOfData": 40960,
+                "Characteristics": 783,
+                "DllCharacteristics": 0,
+                "Entropy": 5.98,
+                "FileAlignment": 512,
+                "ImageBase": 4194304,
+                "Machine": 332,
+                "Magic": 267,
+                "NumberOfRvaAndSizes": 16,
+                "NumberOfSections": 5,
+                "NumberOfSymbols": 0,
+                "PE_TYPE": 267,
+                "PointerToSymbolTable": 0,
+                "Size": 178688,
+                "SizeOfCode": 33792,
+                "SizeOfHeaders": 1024,
+                "SizeOfImage": 33759232,
+                "SizeOfInitializedData": 177664,
+                "SizeOfOptionalHeader": 224,
+                "SizeOfUninitializedData": 33557504,
+                "TimeDateStamp": 0
+            };
+            document.getElementById('singleFeatures').value = JSON.stringify(demoData, null, 2);
+        }
+        
+        async function predictSingle() {
+            const resultDiv = document.getElementById('singleResult');
+            const featuresText = document.getElementById('singleFeatures').value;
+            
+            try {
+                const features = JSON.parse(featuresText);
+                
+                const response = await fetch('/predict_single', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ features: features })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const predClass = data.prediction === 'malware' ? 'malware' : 'goodware';
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <strong>Prediction Result:</strong>
+                        <div class="prediction-result ${predClass}">
+                            ${data.prediction.toUpperCase()}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `<strong>Error:</strong> ${data.error}`;
+                }
+                
+                resultDiv.style.display = 'block';
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                resultDiv.style.display = 'block';
+            }
+        }
+        
+        async function predictBatch() {
+            const resultDiv = document.getElementById('batchResult');
+            const fileInput = document.getElementById('batchFile');
+            
+            if (!fileInput.files.length) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '<strong>Error:</strong> Please select a file';
+                resultDiv.style.display = 'block';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/predict_batch', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let html = `<strong>Batch Prediction Complete</strong><br>`;
+                    html += `<div class="metric-item">Total Instances: ${data.num_instances}</div>`;
+                    
+                    // Show predictions
+                    html += `<div class="predictions-list">`;
+                    data.predictions.forEach((pred, idx) => {
+                        const predClass = pred === 'malware' ? 'malware' : 'goodware';
+                        html += `<div class="prediction-item">Instance ${idx + 1}: <span class="${predClass}">${pred.toUpperCase()}</span></div>`;
+                    });
+                    html += `</div>`;
+                    
+                    // If evaluation metrics are present
+                    if (data.evaluation) {
+                        html += `<div class="metrics">
+                            <h3>Evaluation Metrics:</h3>
+                            <div class="metric-item">Accuracy: ${data.evaluation.accuracy}</div>
+                            <div class="metric-item">AUC: ${data.evaluation.auc}</div>
+                            <div class="confusion-matrix">
+                                <strong>Confusion Matrix:</strong>
+                                <table>
+                                    <tr>
+                                        <th></th>
+                                        <th>Predicted Goodware</th>
+                                        <th>Predicted Malware</th>
+                                    </tr>
+                                    <tr>
+                                        <th>Actual Goodware</th>
+                                        <td>${data.evaluation.confusion_matrix[0][0]}</td>
+                                        <td>${data.evaluation.confusion_matrix[0][1]}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Actual Malware</th>
+                                        <td>${data.evaluation.confusion_matrix[1][0]}</td>
+                                        <td>${data.evaluation.confusion_matrix[1][1]}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>`;
+                    }
+                    
+                    resultDiv.className = 'result info';
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `<strong>Error:</strong> ${data.error}`;
+                }
+                
+                resultDiv.style.display = 'block';
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                resultDiv.style.display = 'block';
+            }
+        }
+        
+        async function evaluateModel() {
+            // Same as predictBatch but using evalFile input
+            const resultDiv = document.getElementById('evalResult');
+            const fileInput = document.getElementById('evalFile');
+            
+            if (!fileInput.files.length) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '<strong>Error:</strong> Please select a file';
+                resultDiv.style.display = 'block';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/predict_batch', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let html = `<strong>Model Evaluation Complete</strong><br>`;
+                    html += `<div class="metric-item">Total Instances: ${data.num_instances}</div>`;
+                    
+                    if (data.evaluation) {
+                        html += `<div class="metrics">
+                            <h3>Performance Metrics:</h3>
+                            <div class="metric-item">✓ Accuracy: <strong>${data.evaluation.accuracy}</strong></div>
+                            <div class="metric-item">✓ AUC: <strong>${data.evaluation.auc}</strong></div>
+                            <div class="confusion-matrix">
+                                <strong>Confusion Matrix:</strong>
+                                <table>
+                                    <tr>
+                                        <th></th>
+                                        <th>Predicted Goodware</th>
+                                        <th>Predicted Malware</th>
+                                    </tr>
+                                    <tr>
+                                        <th>Actual Goodware</th>
+                                        <td>${data.evaluation.confusion_matrix[0][0]}</td>
+                                        <td>${data.evaluation.confusion_matrix[0][1]}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Actual Malware</th>
+                                        <td>${data.evaluation.confusion_matrix[1][0]}</td>
+                                        <td>${data.evaluation.confusion_matrix[1][1]}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>`;
+                    } else {
+                        html += `<div class="result error">No "Label" column found in the uploaded file. Cannot evaluate.</div>`;
+                    }
+                    
+                    resultDiv.className = 'result info';
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `<strong>Error:</strong> ${data.error}`;
+                }
+                
+                resultDiv.style.display = 'block';
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                resultDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
