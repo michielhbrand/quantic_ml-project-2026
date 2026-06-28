@@ -1,201 +1,158 @@
 # Malware Detection ML Project
 
-Machine Learning-based Static Malware Detection System with Web Interface
+Machine learning-based static malware detection — Quantic Introduction to Machine Learning Project 2026.
 
-## Project Overview
+**Live application:** https://malware-detector-idgb.onrender.com
 
-This project implements a complete machine learning pipeline for malware detection, including:
-- **7 ML Models**: 4 baseline + 3 additional high-performing models
-- **Cross-validation**: 10-fold stratified CV for model selection
-- **Web Application**: Flask-based UI for predictions and evaluation
-- **Production Ready**: Model packaging and deployment
+---
 
-## Models Implemented
+## Overview
 
-### Baseline Models (Required)
-1. **Logistic Regression** - Linear classification baseline
-2. **Decision Tree** - Non-linear tree-based classifier
-3. **Random Forest** - Ensemble of decision trees
-4. **PyTorch MLP** - Neural network with 2 hidden layers
+This project builds and evaluates seven machine learning models that classify Windows PE executable files as malware or goodware, selects the best-performing model, and deploys it as a Flask web application with a CI/CD pipeline.
 
-### Additional High-Performing Models
-5. **XGBoost** - Gradient boosting (tree-based)
-6. **LightGBM** - Fast gradient boosting (tree-based)
-7. **CatBoost** - Gradient boosting with categorical support (tree-based)
+---
 
-All models span at least two different algorithm families as required.
+## Models
 
-## Setup Instructions
+| # | Model | Family |
+|---|-------|--------|
+| 1 | Logistic Regression | Linear |
+| 2 | Decision Tree | Tree |
+| 3 | Random Forest | Ensemble (bagging) |
+| 4 | PyTorch MLP | Neural network |
+| 5 | XGBoost | Ensemble (boosting) |
+| 6 | LightGBM | Ensemble (boosting) |
+| 7 | CatBoost | Ensemble (boosting) |
 
-### 1. Create Virtual Environment
+All models are evaluated with 10-fold stratified cross-validation. The best model by CV AUC is selected for production deployment.
 
-```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+---
+
+## Results
+
+See [`evaluation-and-design.md`](evaluation-and-design.md) for the full CV results table and design decisions.
+
+**Best model: XGBoost**
+
+| Metric | Hold-out test set (20%) |
+|--------|------------------------|
+| AUC | 0.9976 |
+| Accuracy | 98.71% |
+
+---
+
+## Repository Structure
+
+```
+quantic_ml-project-2026/
+├── dataset/
+│   └── brazilian-malware-dataset/
+│       └── brazilian-malware.csv        # ~50k PE file feature rows
+├── frontend/
+│   ├── app.py                           # Flask application
+│   ├── requirements.txt                 # Web app dependencies
+│   └── templates/
+│       └── index.html                   # Web UI
+├── ml_models/                           # Jupyter notebooks (one per model)
+├── models/
+│   ├── xgboost.pkl                      # Production model (best)
+│   ├── scaler.pkl                       # StandardScaler (fit on training data)
+│   ├── best_model.txt                   # Name of best model
+│   ├── results.json                     # CV + test metrics for all 7 models
+│   └── test_set.csv                     # 20% hold-out test set (unscaled)
+├── tests/
+│   ├── test_unit.py                     # Unit tests (preprocessing, model wrapper)
+│   ├── test_integration.py              # Integration tests (Flask routes)
+│   └── test_smoke.py                    # Smoke tests (health, predict, model_info)
+├── .github/workflows/
+│   ├── ci-feature.yml                   # Runs tests on feature branch pushes
+│   └── ci-main.yml                      # Runs tests + deploy job on main
+├── train_models.py                      # Full training pipeline
+├── requirements.txt                     # Training dependencies
+├── deployed.md                          # Live URL
+├── evaluation-and-design.md            # CV results, test metrics, design decisions
+└── ai-tooling.md                        # AI tools used
 ```
 
-### 2. Install Dependencies
+---
+
+## Local Setup
+
+### 1. Create a virtual environment
 
 ```bash
-pip install --upgrade pip
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. Install dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### 3. Train Models
+### 3. Train all models
 
 ```bash
 python train_models.py
 ```
 
-This will:
-- Load and preprocess the Brazilian malware dataset
-- Split data into 80% train / 20% test (stratified)
-- Train all 7 models with 10-fold cross-validation
-- Evaluate on hold-out test set
-- Save all models to `models/` directory
-- Generate results summary
+This loads the dataset, fits a `StandardScaler` on the training split, trains all 7 models with 10-fold CV, evaluates on the hold-out test set, and writes artefacts to `models/`.
 
-Expected output:
-- `models/scaler.pkl` - Feature scaler
-- `models/logistic_regression.pkl` - Trained LR model
-- `models/decision_tree.pkl` - Trained DT model
-- `models/random_forest.pkl` - Trained RF model
-- `models/pytorch_mlp.pth` - Trained MLP weights
-- `models/xgboost.pkl` - Trained XGB model
-- `models/lightgbm.pkl` - Trained LGB model
-- `models/catboost.pkl` - Trained CB model
-- `models/results.json` - CV and test metrics for all models
-- `models/best_model.txt` - Name of best performing model
-- `models/test_set.csv` - Hold-out test set for demo
-
-### 4. Run Web Application
+### 4. Run the web application locally
 
 ```bash
 cd frontend
 python app.py
 ```
 
-Or use the convenience script:
+Open `http://localhost:5000` in your browser.
+
+---
+
+## Web Application
+
+The Flask app exposes two sections:
+
+**1. Single Instance Prediction**
+Enter PE feature values as JSON. Use "Load Goodware Demo" or "Load Malware Demo" to pre-fill with verified sample rows from the dataset.
+
+**2. Batch Prediction**
+Upload a CSV file. If the file contains a `Label` column, the app also computes AUC, accuracy, and a confusion matrix. The file `models/test_set.csv` (10,037 rows) can be used to reproduce the hold-out test results.
+
+### API endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | Web UI |
+| POST | `/predict_single` | Predict a single instance (JSON body) |
+| POST | `/predict_batch` | Batch prediction / evaluation (CSV upload) |
+| GET | `/health` | Health check |
+| GET | `/model_info` | Loaded model name and all CV results |
+
+---
+
+## CI/CD Pipeline
+
+Branch protection on `main` requires all changes to go through a pull request with the `test` CI check passing.
+
+| Trigger | Workflow | Jobs |
+|---------|----------|------|
+| Push to any feature branch | `ci-feature.yml` | `test` (pytest) |
+| Pull request → `main` | `ci-main.yml` | `test` (pytest) |
+| Push to `main` (after merge) | `ci-main.yml` | `test` → `deploy` (if tests pass) |
+
+### Running tests locally
+
 ```bash
-./run_app.sh
+pip install pytest
+pytest tests/ -v --tb=short
 ```
 
-Access the application at: `http://localhost:5000`
+---
 
-## Web Application Features
+## Reproducibility
 
-### 1. Single Instance Prediction
-- Manual feature entry via JSON
-- Pre-filled demo data button
-- Displays prediction: Malware or Goodware
-- Shows which model was used
-
-### 2. Batch Prediction
-- Upload CSV file with multiple instances
-- Returns predictions for all instances
-- Supports files with or without labels
-
-### 3. Model Evaluation
-- Upload CSV file with "Label" column
-- Displays performance metrics:
-  - **AUC** (Area Under ROC Curve)
-  - **Accuracy**
-  - **Confusion Matrix**
-- Can demo with `models/test_set.csv`
-
-## Dataset Information
-
-**Source**: Brazilian Malware Dataset
-- **Total Instances**: ~50,000
-- **Features**: 27 numeric features from PE file analysis
-- **Target**: Binary (0=Goodware, 1=Malware)
-- **Class Distribution**: ~42% Goodware, ~56% Malware
-
-**Features Include**:
-- BaseOfCode, BaseOfData, Characteristics
-- Entropy, FileAlignment, ImageBase
-- Machine, Magic, NumberOfSections
-- Size metrics, Timestamps, etc.
-
-## Model Training Protocol
-
-1. **Data Split**: 80% train, 20% test (stratified by class)
-2. **Preprocessing**: StandardScaler fit on training data only
-3. **Cross-Validation**: 10-fold stratified CV on training set
-4. **Metrics**: AUC (primary), Accuracy (secondary)
-5. **Final Model**: Best CV model retrained on full training set
-6. **Test Evaluation**: Single evaluation on held-out test set
-
-## Project Structure
-
-```
-MLProject/
-├── dataset/
-│   └── brazilian-malware-dataset/
-│       └── brazilian-malware.csv
-├── frontend/
-│   ├── app.py                    # Flask application
-│   ├── templates/
-│   │   └── index.html           # Web UI
-│   ├── requirements.txt         # Frontend dependencies
-│   └── README.md
-├── models/                       # Generated after training
-│   ├── *.pkl                    # Trained sklearn models
-│   ├── pytorch_mlp.pth          # PyTorch model weights
-│   ├── scaler.pkl               # Feature scaler
-│   ├── results.json             # All model results
-│   ├── best_model.txt           # Best model name
-│   └── test_set.csv             # Hold-out test set
-├── ml_models_code_examples/     # Reference implementations
-├── train_models.py              # Main training script
-├── requirements.txt             # Project dependencies
-├── run_app.sh                   # Convenience script
-└── README.md                    # This file
-```
-
-## API Endpoints
-
-- `GET /` - Main web interface
-- `POST /predict_single` - Single instance prediction
-- `POST /predict_batch` - Batch prediction and evaluation
-- `GET /health` - Health check (for CI/CD)
-- `GET /model_info` - Get model information and results
-
-## Expected Results
-
-Based on the dataset and models, you should expect:
-- **AUC**: 0.95 - 0.99 (excellent discrimination)
-- **Accuracy**: 0.90 - 0.98 (high accuracy)
-- **Best Models**: Typically XGBoost, LightGBM, or CatBoost
-
-## Notes
-
-- All models use `random_state=42` for reproducibility
-- Preprocessing is fit only on training data to prevent leakage
-- PyTorch MLP uses 2 hidden layers [64, 32] with dropout
-- Cross-validation uses stratified folds to maintain class balance
-- The best model is automatically selected based on CV AUC
-
-## Troubleshooting
-
-### Models not loading in web app
-- Ensure you've run `train_models.py` first
-- Check that `models/` directory exists with all files
-
-### Import errors
-- Make sure virtual environment is activated
-- Run `pip install -r requirements.txt` again
-
-### PyTorch installation issues
-- For CPU-only: `pip install torch --index-url https://download.pytorch.org/whl/cpu`
-- For GPU: Follow PyTorch official installation guide
-
-## Requirements
-
-- Python 3.8+
-- 4GB+ RAM (for model training)
-- ~500MB disk space (for models and dataset)
-
-## License
-
-This is an educational project for the Introduction to Machine Learning course.
+- `random_state=42` used for all train/test splits, cross-validation, and tree-based models
+- `StandardScaler` is fit only on training data; the fitted scaler is saved and reused at inference time
+- All dependencies are pinned in `requirements.txt` and `frontend/requirements.txt`
